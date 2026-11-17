@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>온도계 (ON-DOGAM) - 스마트 야외활동 건강 관리 시스템</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Pretendard Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Pretendard', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#F0F9FF',
+                            100: '#E0F2FE',
+                            500: '#0EA5E9',
+                            600: '#0284C7',
+                            700: '#0369A1',
+                            900: '#0C4A6E',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Custom Notification Modal -->
+    <div id="customModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl fade-in border border-slate-100">
+            <div id="modalIconContainer" class="w-12 h-12 rounded-full flex items-center justify-center mb-4 text-xl"></div>
+            <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mb-2">알림</h3>
+            <p id="modalMessage" class="text-slate-600 text-sm mb-6 leading-relaxed"></p>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-2xl transition shadow-lg shadow-brand-100">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToHome()">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-brand-200">
+                    <i class="fa-solid fa-temperature-arrow-up text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="font-bold text-base sm:text-lg tracking-tight text-slate-900 leading-none">온도계 <span class="text-[11px] font-semibold px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full">ON-DOGAM</span></h1>
+                    </div>
+                    <p id="headerSchoolInfo" class="text-xs text-slate-500 mt-1 font-medium">전남광주통합특별시 · 학교 미설정</p>
+                </div>
+            </div>
+            <!-- Header Right Menu -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button onclick="callSchoolNurse()" id="nurseCallBtn" class="hidden text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl transition flex items-center space-x-1.5 border border-rose-200">
+                    <i class="fa-solid fa-user-nurse"></i>
+                    <span>보건선생님 긴급호출</span>
+                </button>
+                <div id="userBadge" class="hidden items-center space-x-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-700">
+                    <i id="userBadgeIcon" class="fa-solid fa-user text-brand-600"></i>
+                    <span id="headerUserName">게스트</span>
+                </div>
+                <button onclick="logoutApp()" id="logoutBtn" class="hidden text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3.5 py-2 rounded-xl transition flex items-center space-x-1">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>로그아웃</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- VIEW 0: INITIAL ENTRY & SCHOOL / REGION SETUP -->
+        <section id="viewSchoolSetup" class="max-w-xl mx-auto bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-200 p-6 sm:p-10 fade-in">
+            <div class="text-center mb-8">
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-3.5 py-1.5 rounded-full">Step 1. 소속 학교 및 지역 설정</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-4">우리 학교와 지역을 설정해주세요</h2>
+                <p class="text-slate-500 text-sm mt-1.5">실시간 기상 및 대기환경 정보 연동을 위한 기본 설정입니다.</p>
+            </div>
+
+            <form onsubmit="handleSchoolSetup(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">시 / 도 지역 (고정)</label>
+                    <input type="text" disabled value="전남광주통합특별시" class="w-full px-4 py-3.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 cursor-not-allowed">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">학교 급</label>
+                        <select id="setupSchoolLevel" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition text-slate-700">
+                            <option value="초등학교">초등학교</option>
+                            <option value="중학교" selected>중학교</option>
+                            <option value="고등학교">고등학교</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">학교 명</label>
+                        <input type="text" id="setupSchoolName" required placeholder="예: 온누리중학교" value="전남광주통합중학교" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-2xl shadow-lg shadow-brand-100 transition flex items-center justify-center space-x-2 mt-4">
+                    <span>설정 완료 후 로그인 유형 선택으로 이동</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+        </section>
+
+        <!-- VIEW 1: ROLE SELECTION & LOGIN (STUDENT VS TEACHER) -->
+        <section id="viewLoginType" class="hidden max-w-xl mx-auto bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-200 p-6 sm:p-10 fade-in">
+            <div class="text-center mb-8">
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-3.5 py-1.5 rounded-full">Step 2. 로그인 유형 선택</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-4">어떤 사용자로 로그인하시겠습니까?</h2>
+                <p class="text-slate-500 text-sm mt-1.5">학생과 교사용 맞춤형 화면으로 분기됩니다.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <button onclick="selectLoginRole('student')" class="p-6 rounded-3xl border-2 border-brand-200 hover:border-brand-600 bg-brand-50/50 hover:bg-brand-50 transition flex flex-col items-center text-center group">
+                    <div class="w-14 h-14 rounded-2xl bg-brand-600 text-white flex items-center justify-center text-2xl mb-3 shadow-md shadow-brand-200 group-hover:scale-105 transition">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-lg">학생 로그인</h3>
+                    <p class="text-xs text-slate-500 mt-1">개인 건강 프로필 및 맞춤형 야외활동 안내 확인</p>
+                </button>
+
+                <button onclick="selectLoginRole('teacher')" class="p-6 rounded-3xl border-2 border-slate-200 hover:border-slate-700 bg-slate-50/50 hover:bg-slate-100 transition flex flex-col items-center text-center group">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-800 text-white flex items-center justify-center text-2xl mb-3 shadow-md shadow-slate-300 group-hover:scale-105 transition">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-lg">교사 로그인</h3>
+                    <p class="text-xs text-slate-500 mt-1">담당 학급 및 학생 건강 상태 모니터링·관리</p>
+                </button>
+            </div>
+
+            <div class="text-center">
+                <button onclick="goToSchoolSetup()" class="text-xs font-semibold text-slate-500 hover:text-slate-700 underline">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> 이전 학교/지역 설정으로 돌아가기
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 2-A: STUDENT PROFILE & DASHBOARD -->
+        <section id="viewStudentAuth" class="hidden max-w-xl mx-auto bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-200 p-6 sm:p-10 fade-in">
+            <div class="text-center mb-8">
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-3.5 py-1.5 rounded-full">학생 프로필 등록</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-4">개인 맞춤 건강 프로필</h2>
+                <p class="text-slate-500 text-sm mt-1.5">정확한 야외활동 허용 범위 산출을 위해 입력해주세요.</p>
+            </div>
+
+            <form onsubmit="handleStudentLoginSubmit(event)" class="space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">이름</label>
+                        <input type="text" id="studName" required placeholder="예: 김온누리" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">학급 선택</label>
+                        <select id="studClass" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition text-slate-700">
+                            <option value="1반">1학년 1반</option>
+                            <option value="2반">1학년 2반</option>
+                            <option value="3반">1학년 3반</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">건강 주의 / 취약 요인 (중복 선택 가능)</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label class="flex items-center p-3.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition">
+                            <input type="checkbox" name="studCondition" value="천식" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                            <span class="ml-3 text-sm font-medium text-slate-700"><i class="fa-solid fa-lungs text-cyan-600 mr-2"></i>천식 및 호흡기 민감</span>
+                        </label>
+                        <label class="flex items-center p-3.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition">
+                            <input type="checkbox" name="studCondition" value="아토피" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                            <span class="ml-3 text-sm font-medium text-slate-700"><i class="fa-solid fa-feather text-emerald-600 mr-2"></i>아토피 / 심한 피부 알레르기</span>
+                        </label>
+                        <label class="flex items-center p-3.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition">
+                            <input type="checkbox" name="studCondition" value="온열질환취약" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                            <span class="ml-3 text-sm font-medium text-slate-700"><i class="fa-solid fa-temperature-high text-orange-500 mr-2"></i>온열질환 취약 (두통·어지러움)</span>
+                        </label>
+                        <label class="flex items-center p-3.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition">
+                            <input type="checkbox" name="studCondition" value="심혈관" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                            <span class="ml-3 text-sm font-medium text-slate-700"><i class="fa-solid fa-heart-pulse text-rose-500 mr-2"></i>심혈관 민감 / 저혈압</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="selectLoginRole('student')" class="w-1/3 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition">
+                        이전
+                    </button>
+                    <button type="submit" class="w-2/3 py-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-2xl shadow-lg shadow-brand-100 transition flex items-center justify-center space-x-2">
+                        <span>프로필 저장 및 시작하기</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- VIEW 2-B: TEACHER LOGIN & SETUP -->
+        <section id="viewTeacherAuth" class="hidden max-w-xl mx-auto bg-white rounded-3xl shadow-xl shadow-slate-100 border border-slate-200 p-6 sm:p-10 fade-in">
+            <div class="text-center mb-8">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-3.5 py-1.5 rounded-full">교사 관리자 로그인</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-4">담당 정보 설정</h2>
+                <p class="text-slate-500 text-sm mt-1.5">담당 반과 과목을 지정하여 학급 관제를 시작합니다.</p>
+            </div>
+
+            <form onsubmit="handleTeacherLoginSubmit(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">교사 성명</label>
+                    <input type="text" id="teachName" required placeholder="예: 박교사" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-700 focus:bg-white transition">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">담당 학급 (반)</label>
+                        <select id="teachClass" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-700 focus:bg-white transition text-slate-700">
+                            <option value="1반">1학년 1반</option>
+                            <option value="2반">1학년 2반</option>
+                            <option value="3반">1학년 3반</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">담당 과목</label>
+                        <select id="teachSubject" required class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-700 focus:bg-white transition text-slate-700">
+                            <option value="체육교사" selected>체육교사</option>
+                            <option value="보건교사">보건교사</option>
+                            <option value="담임교사">담임교사</option>
+                            <option value="기타">기타 교과</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="selectLoginRole('teacher')" class="w-1/3 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition">
+                        이전
+                    </button>
+                    <button type="submit" class="w-2/3 py-4 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-lg transition flex items-center justify-center space-x-2">
+                        <span>교사 관제 시스템 시작</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- VIEW 3-A: STUDENT MAIN DASHBOARD -->
+        <section id="viewStudentDashboard" class="hidden space-y-6 fade-in">
+            <!-- Dynamic Status Banner -->
+            <div id="studBanner" class="p-6 sm:p-8 rounded-3xl text-white shadow-xl transition-all duration-300 bg-gradient-to-r from-emerald-500 to-teal-600">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span id="studBannerBadge" class="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md">야외활동 정상</span>
+                            <span id="studCurrentDate" class="text-xs text-white/90 font-medium"></span>
+                        </div>
+                        <h2 id="studBannerTitle" class="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">안전하게 야외 체육 활동을 진행할 수 있습니다.</h2>
+                        <p id="studBannerDesc" class="text-white/90 text-sm mt-2 leading-relaxed max-w-2xl">현재 전남광주통합특별시의 대기 환경 및 기상 수치가 양호하며, 회원님의 건강 상태에 따른 제한 사항이 없습니다.</p>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-md p-4 rounded-2xl border border-white/20 flex flex-col items-center justify-center min-w-[170px]">
+                        <span class="text-xs uppercase tracking-wider text-white/80 font-semibold">내 맞춤 활동 등급</span>
+                        <span id="studRiskGrade" class="text-3xl font-black mt-1">SAFE</span>
+                        <span id="studRiskGradeSub" class="text-[11px] text-white/90 mt-0.5">정상 참여 가능</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weather & Personal Guide Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Weather Cards -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100 border border-slate-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                                    <i class="fa-solid fa-cloud-sun text-brand-600 mr-2.5"></i>
+                                    전남광주통합특별시 실시간 대기 & 기상 정보
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5">기상청 및 환경부 대기오염 연동 시스템 모사</p>
+                            </div>
+                            <button onclick="refreshWeatherData()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 shadow-xs">
+                                <i class="fa-solid fa-rotate-right"></i>
+                                <span>정보 새로고침</span>
+                            </button>
+                        </div>
+
+                        <!-- 4 Weather Cards -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                                <div class="flex items-center justify-between text-xs text-slate-600 font-bold">
+                                    <span>기온</span>
+                                    <i class="fa-solid fa-temperature-half text-brand-600"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <span id="valTemp" class="text-2xl font-black text-slate-800">22</span>
+                                    <span class="text-xs text-slate-500 ml-1">°C</span>
+                                </div>
+                                <span id="descTemp" class="text-[11px] text-slate-500 mt-1">쾌적함</span>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                                <div class="flex items-center justify-between text-xs text-slate-600 font-bold">
+                                    <span>미세먼지 (PM10)</span>
+                                    <i class="fa-solid fa-wind text-brand-600"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <span id="valPm10" class="text-2xl font-black text-slate-800">25</span>
+                                    <span class="text-xs text-slate-500 ml-1">㎍/㎥</span>
+                                </div>
+                                <span id="descPm10" class="text-[11px] text-emerald-600 font-semibold mt-1">좋음</span>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                                <div class="flex items-center justify-between text-xs text-slate-600 font-bold">
+                                    <span>초미세먼지 (PM2.5)</span>
+                                    <i class="fa-solid fa-smog text-brand-600"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <span id="valPm25" class="text-2xl font-black text-slate-800">12</span>
+                                    <span class="text-xs text-slate-500 ml-1">㎍/㎥</span>
+                                </div>
+                                <span id="descPm25" class="text-[11px] text-emerald-600 font-semibold mt-1">좋음</span>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                                <div class="flex items-center justify-between text-xs text-slate-600 font-bold">
+                                    <span>자외선 지수</span>
+                                    <i class="fa-solid fa-sun text-brand-600"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <span id="valUv" class="text-2xl font-black text-slate-800">3</span>
+                                    <span class="text-xs text-slate-500 ml-1">지수</span>
+                                </div>
+                                <span id="descUv" class="text-[11px] text-slate-500 mt-1">보통</span>
+                            </div>
+                        </div>
+
+                        <!-- Weather Simulator Control for Demonstration -->
+                        <div class="mt-6 p-4 bg-brand-50/50 rounded-2xl border border-brand-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <span class="text-xs text-brand-900 font-medium">
+                                <i class="fa-solid fa-sliders mr-1.5 text-brand-600"></i>날씨/대기환경 시뮬레이터 (수치 조절 테스트):
+                            </span>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="simulateWeather('good')" class="px-3 py-1.5 bg-white hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-xl border border-brand-200 transition">맑음/좋음</button>
+                                <button onclick="simulateWeather('warn')" class="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-xl border border-amber-200 transition">미세먼지/폭염 주의</button>
+                                <button onclick="simulateWeather('danger')" class="px-3 py-1.5 bg-white hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition">위험 (실내대피)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- My Health Summary -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100 border border-slate-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-base font-bold text-slate-900 flex items-center">
+                                <i class="fa-solid fa-id-card-clip text-brand-600 mr-2.5"></i>
+                                내 맞춤 건강 프로필 정보
+                            </h3>
+                            <button onclick="editStudentProfile()" class="text-xs text-brand-600 hover:underline font-semibold">프로필 수정</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                                <span class="text-xs text-slate-400 block font-medium">성명</span>
+                                <span id="myProfileName" class="text-sm font-bold text-slate-800 mt-0.5 block">-</span>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                                <span class="text-xs text-slate-400 block font-medium">소속 학급</span>
+                                <span id="myProfileClass" class="text-sm font-bold text-slate-800 mt-0.5 block">-</span>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                                <span class="text-xs text-slate-400 block font-medium">등록된 건강 주의 요인</span>
+                                <div id="myProfileConditions" class="flex flex-wrap gap-1 mt-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Action Guides & SOS -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100 border border-slate-200 flex flex-col justify-between h-full">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                                <h3 class="text-base font-bold text-slate-900 flex items-center">
+                                    <i class="fa-solid fa-shield-halved text-brand-600 mr-2"></i>
+                                    맞춤 행동 지침
+                                </h3>
+                                <span id="actionBadge" class="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full">안전</span>
+                            </div>
+                            <div id="actionGuidesContainer" class="space-y-3.5"></div>
+                        </div>
+
+                        <div class="mt-8 pt-6 border-t border-slate-100">
+                            <button onclick="triggerStudentSOS()" class="w-full py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-sm rounded-2xl transition flex items-center justify-center space-x-2 shadow-xs">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>체육교사/보건실 긴급 SOS 요청</span>
+                            </button>
+                            <p class="text-[11px] text-slate-400 text-center mt-2">어지러움이나 호흡 곤란 발생 시 즉시 교사에게 전송됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3-B: TEACHER MAIN DASHBOARD -->
+        <section id="viewTeacherDashboard" class="hidden space-y-6 fade-in">
+            <!-- Top Teacher Banner -->
+            <div class="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <span class="bg-slate-800 text-brand-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">교사 통합 관제 모드</span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold mt-3"><span id="teachDashTitle">1학년 1반 체육교사 박교사</span>님 환영합니다</h2>
+                    <p class="text-slate-300 text-sm mt-1">총 3개 학급(각 반 10명, 총 30명)의 학생 건강 데이터 및 실시간 위험도를 투명하게 모니터링합니다.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="broadcastClassAlert()" class="px-4 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-2xl text-sm transition shadow-lg flex items-center space-x-2">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <span>학급 전체 긴급 안내 발송</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Realtime Weather Widget for Teachers -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-100 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-cloud-sun"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">전남광주통합특별시 실시간 환경</span>
+                        <h4 id="teachWeatherText" class="text-base font-extrabold text-slate-800 mt-0.5">기온 22°C | 미세먼지 25㎍/㎥ (좋음) | 자외선 3</h4>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-bold text-slate-500">교사 날씨 시뮬레이션:</span>
+                    <button onclick="simulateWeather('good')" class="px-3 py-1.5 bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-700 text-xs font-bold rounded-xl transition">맑음</button>
+                    <button onclick="simulateWeather('warn')" class="px-3 py-1.5 bg-slate-100 hover:bg-amber-50 hover:text-amber-600 text-slate-700 text-xs font-bold rounded-xl transition">주의</button>
+                    <button onclick="simulateWeather('danger')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 text-xs font-bold rounded-xl transition">위험</button>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-slate-400 uppercase">전체 관리 학생</span>
+                        <h4 class="text-2xl font-black text-slate-800 mt-1">30 명</h4>
+                    </div>
+                    <div class="w-12 h-12 bg-slate-100 text-slate-700 rounded-2xl flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-slate-800 uppercase">정상 활동 가능</span>
+                        <h4 id="statSafeCount" class="text-2xl font-black text-emerald-600 mt-1">21 명</h4>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-slate-800 uppercase">주의 및 경고군</span>
+                        <h4 id="statWarnCount" class="text-2xl font-black text-amber-600 mt-1">9 명</h4>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-semibold text-slate-800 uppercase">실내 대피 권고군</span>
+                        <h4 id="statDangerCount" class="text-2xl font-black text-rose-600 mt-1">0 명</h4>
+                    </div>
+                    <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-shield-virus"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student List Table (Visible Health Data for Teachers) -->
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100 border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-6 gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">학급별 학생 건강 및 질환 모니터링</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">교사에게만 투명하게 공개되는 학생별 병명 및 건강 취약 요인 목록입니다.</p>
+                    </div>
+
+                    <!-- Class Tabs -->
+                    <div class="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                        <button onclick="switchTeacherClassTab('1반')" id="tabBtn1" class="px-4 py-2 text-xs font-bold rounded-xl transition bg-white text-slate-900 shadow-sm">1반 (10명)</button>
+                        <button onclick="switchTeacherClassTab('2반')" id="tabBtn2" class="px-4 py-2 text-xs font-bold rounded-xl transition text-slate-600 hover:text-slate-900">2반 (10명)</button>
+                        <button onclick="switchTeacherClassTab('3반')" id="tabBtn3" class="px-4 py-2 text-xs font-bold rounded-xl transition text-slate-600 hover:text-slate-900">3반 (10명)</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="py-3 px-4">번호 / 이름</th>
+                                <th class="py-3 px-4">학급</th>
+                                <th class="py-3 px-4">건강 취약 요인 / 병명 (교사 전용)</th>
+                                <th class="py-3 px-4">개인별 활동 판정</th>
+                                <th class="py-3 px-4 text-right">선제적 안전 조치</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacherStudentTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Application Script -->
+    <script>
+        // Global State
+        let appConfig = {
+            region: "전남광주통합특별시",
+            schoolLevel: "중학교",
+            schoolName: "전남광주통합중학교"
+        };
+
+        let currentRole = null; // 'student' or 'teacher'
+
+        let studentProfile = {
+            name: "김온누리",
+            classInfo: "1반",
+            conditions: ["천식"]
+        };
+
+        let teacherProfile = {
+            name: "박교사",
+            classInfo: "1반",
+            subject: "체육교사"
+        };
+
+        let weatherData = {
+            temp: 22,
+            pm10: 25,
+            pm25: 12,
+            uv: 3
+        };
+
+        // 3 Classes with 10 students each including health vulnerabilities/diseases visible to teachers
+        const mockClassesData = {
+            "1반": [
+                { id: 1, name: "김민수", classInfo: "1반", conditions: ["천식"] },
+                { id: 2, name: "이서연", classInfo: "1반", conditions: ["온열질환취약"] },
+                { id: 3, name: "박지호", classInfo: "1반", conditions: ["아토피"] },
+                { id: 4, name: "정다은", classInfo: "1반", conditions: [] },
+                { id: 5, name: "강현우", classInfo: "1반", conditions: ["심혈관"] },
+                { id: 6, name: "조서진", classInfo: "1반", conditions: [] },
+                { id: 7, name: "윤도현", classInfo: "1반", conditions: ["천식", "온열질환취약"] },
+                { id: 8, name: "한지민", classInfo: "1반", conditions: [] },
+                { id: 9, name: "오준서", classInfo: "1반", conditions: ["아토피"] },
+                { id: 10, name: "서예은", classInfo: "1반", conditions: [] }
+            ],
+            "2반": [
+                { id: 1, name: "임도윤", classInfo: "2반", conditions: ["온열질환취약"] },
+                { id: 2, name: "한서준", classInfo: "2반", conditions: [] },
+                { id: 3, name: "오지유", classInfo: "2반", conditions: ["천식"] },
+                { id: 4, name: "신예준", classInfo: "2반", conditions: [] },
+                { id: 5, name: "권서아", classInfo: "2반", conditions: ["심혈관", "온열질환취약"] },
+                { id: 6, name: "황시우", classInfo: "2반", conditions: [] },
+                { id: 7, name: "송하윤", classInfo: "2반", conditions: ["아토피"] },
+                { id: 8, name: "류지호", classInfo: "2반", conditions: [] },
+                { id: 9, name: "전소율", classInfo: "2반", conditions: ["천식"] },
+                { id: 10, name: "홍준우", classInfo: "2반", conditions: [] }
+            ],
+            "3반": [
+                { id: 1, name: "배서윤", classInfo: "3반", conditions: [] },
+                { id: 2, name: "백지안", classInfo: "3반", conditions: ["온열질환취약"] },
+                { id: 3, name: "허준서", classInfo: "3반", conditions: ["천식", "아토피"] },
+                { id: 4, name: "유서아", classInfo: "3반", conditions: [] },
+                { id: 5, name: "남궁민", classInfo: "3반", conditions: [] },
+                { id: 6, name: "심하은", classInfo: "3반", conditions: ["심혈관"] },
+                { id: 7, name: "손도윤", classInfo: "3반", conditions: [] },
+                { id: 8, name: "양지유", classInfo: "3반", conditions: ["온열질환취약"] },
+                { id: 9, name: "손민재", classInfo: "3반", conditions: [] },
+                { id: 10, name: "조예린", classInfo: "3반", conditions: ["아토피"] }
+            ]
+        };
+
+        let currentTeacherTab = "1반";
+
+        // Initialization on window load
+        window.onload = function() {
+            showView('viewSchoolSetup');
+            updateHeaderInfo();
+        };
+
+        function hideAllViews() {
+            document.getElementById('viewSchoolSetup').classList.add('hidden');
+            document.getElementById('viewLoginType').classList.add('hidden');
+            document.getElementById('viewStudentAuth').classList.add('hidden');
+            document.getElementById('viewTeacherAuth').classList.add('hidden');
+            document.getElementById('viewStudentDashboard').classList.add('hidden');
+            document.getElementById('viewTeacherDashboard').classList.add('hidden');
+            document.getElementById('userBadge').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('nurseCallBtn').classList.add('hidden');
+        }
+
+        function showView(viewId) {
+            hideAllViews();
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        function updateHeaderInfo() {
+            document.getElementById('headerSchoolInfo').innerText = `${appConfig.region} · ${appConfig.schoolName}`;
+        }
+
+        function resetToHome() {
+            currentRole = null;
+            showView('viewSchoolSetup');
+            updateHeaderInfo();
+        }
+
+        function logoutApp() {
+            resetToHome();
+        }
+
+        // Step 1 Handler
+        function handleSchoolSetup(event) {
+            event.preventDefault();
+            const level = document.getElementById('setupSchoolLevel').value;
+            const name = document.getElementById('setupSchoolName').value.trim();
+
+            if (!name) {
+                showAlert('입력 오류', '학교 명칭을 정확히 입력해주세요.', 'error');
+                return;
+            }
+
+            appConfig.schoolLevel = level;
+            appConfig.schoolName = name;
+            updateHeaderInfo();
+
+            showView('viewLoginType');
+        }
+
+        function goToSchoolSetup() {
+            showView('viewSchoolSetup');
+        }
+
+        // Step 2 Handler
+        function selectLoginRole(role) {
+            currentRole = role;
+            if (role === 'student') {
+                showView('viewStudentAuth');
+                document.getElementById('studName').value = studentProfile.name;
+                document.getElementById('studClass').value = studentProfile.classInfo;
+            } else {
+                showView('viewTeacherAuth');
+                document.getElementById('teachName').value = teacherProfile.name;
+                document.getElementById('teachClass').value = teacherProfile.classInfo;
+                document.getElementById('teachSubject').value = teacherProfile.subject;
+            }
+        }
+
+        // Student Profile Submit
+        function handleStudentLoginSubmit(event) {
+            event.preventDefault();
+            const name = document.getElementById('studName').value.trim();
+            const classInfo = document.getElementById('studClass').value;
+            const checkedConditions = Array.from(document.querySelectorAll('input[name="studCondition"]:checked')).map(cb => cb.value);
+
+            if (!name) {
+                showAlert('입력 오류', '이름을 입력해주세요.', 'error');
+                return;
+            }
+
+            studentProfile.name = name;
+            studentProfile.classInfo = classInfo;
+            studentProfile.conditions = checkedConditions;
+
+            // Update Header User Badge & Nurse Call button
+            document.getElementById('userBadge').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('nurseCallBtn').classList.remove('hidden');
+            document.getElementById('headerUserName').innerText = `${studentProfile.name} (${studentProfile.classInfo})`;
+            document.getElementById('userBadgeIcon').className = 'fa-solid fa-user-graduate text-brand-600';
+
+            showView('viewStudentDashboard');
+            renderStudentDashboard();
+        }
+
+        // Teacher Login Submit
+        function handleTeacherLoginSubmit(event) {
+            event.preventDefault();
+            const name = document.getElementById('teachName').value.trim();
+            const classInfo = document.getElementById('teachClass').value;
+            const subject = document.getElementById('teachSubject').value;
+
+            if (!name) {
+                showAlert('입력 오류', '교사 성명을 입력해주세요.', 'error');
+                return;
+            }
+
+            teacherProfile.name = name;
+            teacherProfile.classInfo = classInfo;
+            teacherProfile.subject = subject;
+
+            // Update Header User Badge & Nurse Call button
+            document.getElementById('userBadge').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('nurseCallBtn').classList.remove('hidden');
+            document.getElementById('headerUserName').innerText = `${teacherProfile.name} (${teacherProfile.classInfo} · ${teacherProfile.subject})`;
+            document.getElementById('userBadgeIcon').className = 'fa-solid fa-chalkboard-user text-slate-800';
+
+            showView('viewTeacherDashboard');
+            renderTeacherDashboard();
+        }
+
+        // Render Student Dashboard
+        function renderStudentDashboard() {
+            const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+            document.getElementById('studCurrentDate').innerText = todayStr;
+
+            document.getElementById('myProfileName').innerText = studentProfile.name;
+            document.getElementById('myProfileClass').innerText = studentProfile.classInfo;
+            
+            const condContainer = document.getElementById('myProfileConditions');
+            if (studentProfile.conditions.length === 0) {
+                condContainer.innerHTML = '<span class="text-xs text-slate-500 font-medium">등록된 건강 주의 요인 없음 (건강 양호)</span>';
+            } else {
+                condContainer.innerHTML = studentProfile.conditions.map(c => `<span class="px-2 py-0.5 bg-brand-50 text-brand-700 text-xs font-bold rounded-lg border border-brand-200">${c}</span>`).join('');
+            }
+
+            updateWeatherDisplay();
+            evaluateStudentRiskStatus();
+        }
+
+        // Weather Simulator
+        function simulateWeather(type) {
+            if (type === 'good') {
+                weatherData = { temp: 22, pm10: 20, pm25: 10, uv: 2 };
+            } else if (type === 'warn') {
+                weatherData = { temp: 32, pm10: 85, pm25: 42, uv: 6 };
+            } else if (type === 'danger') {
+                weatherData = { temp: 36, pm10: 160, pm25: 80, uv: 9 };
+            }
+
+            updateWeatherDisplay();
+            if (currentRole === 'student') {
+                evaluateStudentRiskStatus();
+            } else {
+                renderTeacherDashboard();
+            }
+            showAlert('시뮬레이터 적용', `전남광주통합특별시 환경 지표가 [${type === 'good' ? '맑음/좋음' : (type === 'warn' ? '주의' : '위험/실내대피격상')}] 모드로 변경되었습니다.`, 'success');
+        }
+
+        function refreshWeatherData() {
+            showAlert('동기화 완료', '전남광주통합특별시 기상청 및 환경부 실시간 데이터가 정상 동기화되었습니다.', 'success');
+        }
+
+        function updateWeatherDisplay() {
+            document.getElementById('valTemp').innerText = weatherData.temp;
+            document.getElementById('valPm10').innerText = weatherData.pm10;
+            document.getElementById('valPm25').innerText = weatherData.pm25;
+            document.getElementById('valUv').innerText = weatherData.uv;
+
+            // Descriptions
+            document.getElementById('descTemp').innerText = weatherData.temp >= 35 ? '폭염 경보수준' : (weatherData.temp >= 30 ? '다소 더움' : '쾌적함');
+            document.getElementById('descPm10').innerText = weatherData.pm10 <= 30 ? '좋음' : (weatherData.pm10 <= 80 ? '보통' : '나쁨');
+            document.getElementById('descPm25').innerText = weatherData.pm25 <= 15 ? '좋음' : (weatherData.pm25 <= 35 ? '보통' : '나쁨');
+            document.getElementById('descUv').innerText = weatherData.uv <= 2 ? '낮음' : (weatherData.uv <= 5 ? '보통' : '높음');
+
+            // Teacher weather text
+            const teachWeatherText = document.getElementById('teachWeatherText');
+            if (teachWeatherText) {
+                const statusStr = weatherData.pm10 <= 30 ? '좋음' : (weatherData.pm10 <= 80 ? '보통' : '나쁨');
+                teachWeatherText.innerText = `기온 ${weatherData.temp}°C | 미세먼지 ${weatherData.pm10}㎍/㎥ (${statusStr}) | 자외선 지수 ${weatherData.uv}`;
+            }
+        }
+
+        function evaluateStudentRiskStatus() {
+            const banner = document.getElementById('studBanner');
+            const bannerBadge = document.getElementById('studBannerBadge');
+            const bannerTitle = document.getElementById('studBannerTitle');
+            const bannerDesc = document.getElementById('studBannerDesc');
+            const riskGrade = document.getElementById('studRiskGrade');
+            const riskGradeSub = document.getElementById('studRiskGradeSub');
+            const actionBadge = document.getElementById('actionBadge');
+            const guidesContainer = document.getElementById('actionGuidesContainer');
+
+            const isHighHeat = weatherData.temp >= 33;
+            const isBadDust = weatherData.pm10 >= 75;
+            const hasRespiratory = studentProfile.conditions.includes('천식');
+            const hasHeatVulnerable = studentProfile.conditions.includes('온열질환취약');
+
+            let riskLevel = 'SAFE';
+            if ((isHighHeat && hasHeatVulnerable) || (isBadDust && hasRespiratory) || (weatherData.temp >= 36 || weatherData.pm10 >= 150)) {
+                riskLevel = 'DANGER';
+            } else if (isHighHeat || isBadDust || weatherData.uv >= 7 || studentProfile.conditions.length > 0) {
+                riskLevel = 'WARNING';
+            }
+
+            if (riskLevel === 'DANGER') {
+                banner.className = 'p-6 sm:p-8 rounded-3xl text-white shadow-xl transition-all duration-300 bg-gradient-to-r from-rose-600 to-red-700';
+                bannerBadge.innerText = '야외활동 엄격 제한';
+                bannerTitle.innerText = '실내 체육관 활동으로 즉시 전환됩니다.';
+                bannerDesc.innerText = '현재 전남광주통합특별시의 대기 환경 또는 기상 위험 수치가 높으며, 회원님의 건강 취약 요인에 따라 실외 활동이 전면 제한됩니다.';
+                riskGrade.innerText = 'DANGER';
+                riskGradeSub.innerText = '실내 대피 필수';
+                actionBadge.className = 'text-xs font-bold px-2.5 py-1 bg-rose-50 text-rose-600 rounded-full';
+                actionBadge.innerText = 'DANGER';
+
+                guidesContainer.innerHTML = `
+                    <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+                        <span class="text-xs font-black text-rose-700 block mb-1">🚨 실내 대피 및 휴식 조치</span>
+                        <p class="text-xs text-rose-800 leading-relaxed">체육교사 및 보건선생님의 안내에 따라 즉시 시원하고 공기가 정화된 실내로 이동하세요.</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                        <span class="text-xs font-bold text-slate-700 block mb-1">💧 수분 섭취 및 상태 모니터링</span>
+                        <p class="text-xs text-slate-600 leading-relaxed">충분한 물을 마시고 어지러움이나 호흡 곤란이 느껴지면 즉시 '보건선생님 긴급호출' 버튼을 누르세요.</p>
+                    </div>
+                `;
+            } else if (riskLevel === 'WARNING') {
+                banner.className = 'p-6 sm:p-8 rounded-3xl text-white shadow-xl transition-all duration-300 bg-gradient-to-r from-amber-500 to-orange-600';
+                bannerBadge.innerText = '맞춤형 주의 권고';
+                bannerTitle.innerText = '야외 활동 시 페이스 조절과 휴식이 필요합니다.';
+                bannerDesc.innerText = '현재 환경 지표 또는 개인 건강 주의 요인을 고려하여, 무리한 고강도 운동을 피하고 그늘에서 휴식하며 참여해야 합니다.';
+                riskGrade.innerText = 'WARNING';
+                riskGradeSub.innerText = '주의 및 페이스 조절';
+                actionBadge.className = 'text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full';
+                actionBadge.innerText = 'WARNING';
+
+                guidesContainer.innerHTML = `
+                    <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                        <span class="text-xs font-black text-amber-800 block mb-1">⚠️ 강도 조절 및 마스크 착용</span>
+                        <p class="text-xs text-amber-900 leading-relaxed">격렬한 달리기를 자제하고 수시로 그늘에서 호흡을 가다듬으세요.</p>
+                    </div>
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                        <span class="text-xs font-bold text-slate-700 block mb-1">🩺 증상 발생 시 즉시 보고</span>
+                        <p class="text-xs text-slate-600 leading-relaxed">기침, 두통, 어지러움 등이 나타나면 즉시 체육교사에게 알리세요.</p>
+                    </div>
+                `;
+            } else {
+                banner.className = 'p-6 sm:p-8 rounded-3xl text-white shadow-xl transition-all duration-300 bg-gradient-to-r from-emerald-500 to-teal-600';
+                bannerBadge.innerText = '야외활동 정상';
+                bannerTitle.innerText = '안전하게 야외 체육 활동을 진행할 수 있습니다.';
+                bannerDesc.innerText = '현재 전남광주통합특별시의 대기 환경 및 기상 수치가 양호하며, 회원님의 건강 상태에 따른 제한 사항이 없습니다.';
+                riskGrade.innerText = 'SAFE';
+                riskGradeSub.innerText = '정상 참여 가능';
+                actionBadge.className = 'text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full';
+                actionBadge.innerText = 'SAFE';
+
+                guidesContainer.innerHTML = `
+                    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                        <span class="text-xs font-black text-emerald-700 block mb-1">✨ 정상 활동 지침</span>
+                        <p class="text-xs text-emerald-800 leading-relaxed">수분을 규칙적으로 섭취하며 즐겁고 안전하게 수업에 참여하세요.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function editStudentProfile() {
+            showView('viewStudentAuth');
+            document.getElementById('studName').value = studentProfile.name;
+            document.getElementById('studClass').value = studentProfile.classInfo;
+        }
+
+        // Student or Teacher SOS Call
+        function callSchoolNurse() {
+            showAlert('보건선생님 긴급 호출 발송 완료', '보건실 및 담당 교사 단말기로 긴급 SOS 호출이 전송되었습니다. 보건선생님이 즉시 확인 중입니다.', 'warning');
+        }
+
+        function triggerStudentSOS() {
+            callSchoolNurse();
+        }
+
+        // Teacher Dashboard Render
+        function renderTeacherDashboard() {
+            document.getElementById('teachDashTitle').innerText = `${teacherProfile.classInfo} ${teacherProfile.subject} ${teacherProfile.name}`;
+            
+            // Calculate Stats across 30 students
+            let safeCount = 0;
+            let warnCount = 0;
+            let dangerCount = 0;
+
+            Object.values(mockClassesData).forEach(classList => {
+                classList.forEach(s => {
+                    const hasCond = s.conditions.length > 0;
+                    const isHighHeat = weatherData.temp >= 33;
+                    const isBadDust = weatherData.pm10 >= 75;
+                    const hasResp = s.conditions.includes('천식');
+                    const hasHeat = s.conditions.includes('온열질환취약');
+
+                    if ((isHighHeat && hasHeat) || (isBadDust && hasResp) || weatherData.temp >= 36) {
+                        dangerCount++;
+                    } else if (hasCond || isHighHeat || isBadDust) {
+                        warnCount++;
+                    } else {
+                        safeCount++;
+                    }
+                });
+            });
+
+            document.getElementById('statSafeCount').innerText = `${safeCount} 명`;
+            document.getElementById('statWarnCount').innerText = `${warnCount} 명`;
+            document.getElementById('statDangerCount').innerText = `${dangerCount} 명`;
+
+            renderTeacherStudentTable();
+        }
+
+        function switchTeacherClassTab(classVal) {
+            currentTeacherTab = classVal;
+            document.getElementById('tabBtn1').className = classVal === '1반' ? 'px-4 py-2 text-xs font-bold rounded-xl transition bg-white text-slate-900 shadow-sm' : 'px-4 py-2 text-xs font-bold rounded-xl transition text-slate-600 hover:text-slate-900';
+            document.getElementById('tabBtn2').className = classVal === '2반' ? 'px-4 py-2 text-xs font-bold rounded-xl transition bg-white text-slate-900 shadow-sm' : 'px-4 py-2 text-xs font-bold rounded-xl transition text-slate-600 hover:text-slate-900';
+            document.getElementById('tabBtn3').className = classVal === '3반' ? 'px-4 py-2 text-xs font-bold rounded-xl transition bg-white text-slate-900 shadow-sm' : 'px-4 py-2 text-xs font-bold rounded-xl transition text-slate-600 hover:text-slate-900';
+            
+            renderTeacherStudentTable();
+        }
+
+        function renderTeacherStudentTable() {
+            const list = mockClassesData[currentTeacherTab] || [];
+            let html = '';
+
+            list.forEach(s => {
+                const hasCond = s.conditions.length > 0;
+                const condText = hasCond ? s.conditions.join(', ') : '특이 질환 없음 (건강 양호)';
+                const condBadge = hasCond ? `<span class="px-2.5 py-1 bg-amber-50 text-amber-800 font-bold rounded-lg border border-amber-200 text-xs">${condText}</span>` : `<span class="text-slate-400 text-xs">일반 학생</span>`;
+
+                const isHighHeat = weatherData.temp >= 33;
+                const isBadDust = weatherData.pm10 >= 75;
+                const hasResp = s.conditions.includes('천식');
+                const hasHeat = s.conditions.includes('온열질환취약');
+
+                let decisionHtml = '<span class="text-emerald-600 font-bold text-xs"><i class="fa-solid fa-check mr-1"></i>정상 참여 가능 (SAFE)</span>';
+                if ((isHighHeat && hasHeat) || (isBadDust && hasResp) || weatherData.temp >= 36) {
+                    decisionHtml = '<span class="text-rose-600 font-bold text-xs"><i class="fa-solid fa-ban mr-1"></i>실내체육 대피 필수 (DANGER)</span>';
+                } else if (hasCond || isHighHeat || isBadDust) {
+                    decisionHtml = '<span class="text-amber-600 font-bold text-xs"><i class="fa-solid fa-triangle-exclamation mr-1"></i>페이스 조절 필요 (WARNING)</span>';
+                }
+
+                html += `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-4 px-4 font-bold text-slate-800">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs flex items-center justify-center font-bold">${s.id}</span>
+                                <span>${s.name}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-4 text-xs font-semibold text-slate-600">${s.classInfo}</td>
+                        <td class="py-4 px-4">${condBadge}</td>
+                        <td class="py-4 px-4">${decisionHtml}</td>
+                        <td class="py-4 px-4 text-right">
+                            <button onclick="teacherStudentAction('${s.name}', '${s.classInfo}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+                                조치 내리기
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('teacherStudentTableBody').innerHTML = html;
+        }
+
+        function teacherStudentAction(name, classInfo) {
+            showAlert('교사 안전 조치 발령', `[${classInfo} ${name}] 학생에게 그늘 휴식 지시 및 보건실 연계 안전 조치가 발령되었습니다.`, 'success');
+        }
+
+        function broadcastClassAlert() {
+            showAlert('학급 전체 긴급 공지 발송', '전남광주통합특별시 기상 환경 악화 및 안전 지침에 따라 모든 학생 단말기로 긴급 공지가 전송되었습니다.', 'success');
+        }
+
+        // Modal Utility
+        function showAlert(title, message, type) {
+            const modal = document.getElementById('customModal');
+            const iconContainer = document.getElementById('modalIconContainer');
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+
+            if (type === 'error' || type === 'warning') {
+                iconContainer.className = 'w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-4 text-xl';
+                iconContainer.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else {
+                iconContainer.className = 'w-12 h-12 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mb-4 text-xl';
+                iconContainer.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('customModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
